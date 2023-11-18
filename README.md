@@ -26,6 +26,8 @@
 ## API Reference
 
 ## ERD
+참고: 개발 단계에서 변경이 일어 날 수 있습니다.
+![erd-kanban](./assets/images/erd-kanban.png)
 
 ## 프로젝트 진행 및 이슈 관리
 [Project Kanban 이슈 관리 현황판 바로가기](https://github.com/users/mireu-san/projects/6)
