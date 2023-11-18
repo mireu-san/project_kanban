@@ -28,6 +28,7 @@
 ## ERD
 
 ## 프로젝트 진행 및 이슈 관리
+![Project Kanban 이슈 관리 현황판 바로가기](https://github.com/users/mireu-san/projects/6)
 
 ## 구현 설계 및 의도
 
