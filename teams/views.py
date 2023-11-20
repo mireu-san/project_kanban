@@ -7,6 +7,7 @@ from .serializers import TeamSerializer, TeamInvitationSerializer
 from users.models import User
 
 from rest_framework import permissions
+from rest_framework.exceptions import NotFound
 
 
 class TeamCreateAPIView(views.APIView):
@@ -91,3 +92,29 @@ class TeamInvitationCreateAPIView(views.APIView):
         invitation = TeamInvitation.objects.create(team=team, invitee=invitee)
         serializer = TeamInvitationSerializer(invitation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class TeamInvitationAcceptAPIView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, invitation_id):
+        try:
+            invitation = TeamInvitation.objects.get(
+                id=invitation_id, invitee=request.user
+            )
+
+            # 초대가 pending 상태인지 확인합니다.
+            if invitation.status != "pending":
+                return Response(
+                    {"error": "Invitation is already responded."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            invitation.status = "accepted"
+            invitation.save()
+            return Response(
+                {"status": "Invitation accepted"}, status=status.HTTP_200_OK
+            )
+
+        except TeamInvitation.DoesNotExist:
+            raise NotFound(detail="Invitation not found.")

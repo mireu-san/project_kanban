@@ -3,11 +3,6 @@ from .manager import CustomUserManager
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 import uuid
 
-# from teams.models import Team
-"""
-teams 구현 후 주석 해제
-"""
-
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(
@@ -15,7 +10,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     username = models.CharField(max_length=30, unique=True)
     email = models.EmailField(max_length=255, unique=True)
-    # team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True)
+    team = models.ForeignKey(
+        "teams.Team", on_delete=models.SET_NULL, null=True, blank=True
+    )
     objects = CustomUserManager()
 
     USERNAME_FIELD = "username"
