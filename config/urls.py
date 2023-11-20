@@ -31,7 +31,7 @@ urlpatterns = [
     # url
     path("admin/", admin.site.urls),
     path("api/v1/users/", include("users.urls")),
-    # path("api/v1/teams/", include("teams.urls")),
+    path("api/v1/teams/", include("teams.urls")),
     # path("api/v1/kanban/", include("kanban.urls")),
     # path("api/v1/analyst/", include("analyst.urls")),
 ]
