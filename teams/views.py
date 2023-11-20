@@ -5,7 +5,9 @@ from rest_framework.exceptions import PermissionDenied, NotFound
 from .models import Team, TeamInvitation
 from .serializers import TeamSerializer, TeamInvitationSerializer
 from users.models import User
-from rest_framework import permissions
+
+# from rest_framework import permissions
+from users.serializers import MyPageSerializer
 
 
 class TeamCreateAPIView(views.APIView):
@@ -41,9 +43,13 @@ class TeamInvitationCreateAPIView(views.APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except Team.DoesNotExist:
-            return Response({"error": "팀을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "팀을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
         except User.DoesNotExist:
-            return Response({"error": "초대할 사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "초대할 사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -54,11 +60,15 @@ class TeamInvitationAcceptAPIView(views.APIView):
     # 초대 승낙 API
     def post(self, request, invitation_id):
         try:
-            invitation = TeamInvitation.objects.get(id=invitation_id, invitee=request.user)
+            invitation = TeamInvitation.objects.get(
+                id=invitation_id, invitee=request.user
+            )
 
             # 초대가 대기 상태인지 확인
             if invitation.status != "pending":
-                return Response({"error": "초대에 이미 응답되었습니다."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "초대에 이미 응답되었습니다."}, status=status.HTTP_400_BAD_REQUEST
+                )
 
             # 초대 상태를 'accepted'로 변경
             invitation.status = "accepted"
@@ -79,10 +89,12 @@ class TeamMemberListView(views.APIView):
             # 팀의 수락된 초대 목록 가져오기
             invitations = TeamInvitation.objects.filter(team=team, status="accepted")
             members = [invitation.invitee for invitation in invitations]
-            serializer = UserSerializer(members, many=True)
+            serializer = MyPageSerializer(members, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Team.DoesNotExist:
-            return Response({"error": "팀을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "팀을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class TeamInvitationRespondAPIView(views.APIView):
@@ -92,20 +104,28 @@ class TeamInvitationRespondAPIView(views.APIView):
     def post(self, request, invitation_id):
         response = request.data.get("response", "")  # 'accept' 또는 'decline'
         try:
-            invitation = TeamInvitation.objects.get(id=invitation_id, invitee=request.user)
+            invitation = TeamInvitation.objects.get(
+                id=invitation_id, invitee=request.user
+            )
 
             if invitation.status != "pending":
-                return Response({"error": "초대에 이미 응답되었습니다."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "초대에 이미 응답되었습니다."}, status=status.HTTP_400_BAD_REQUEST
+                )
 
             if response.lower() == "accept":
                 invitation.status = "accepted"
             elif response.lower() == "decline":
                 invitation.status = "declined"
             else:
-                return Response({"error": "잘못된 응답입니다."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "잘못된 응답입니다."}, status=status.HTTP_400_BAD_REQUEST
+                )
 
             invitation.save()
-            return Response({"status": f"초대가 {response}되었습니다."}, status=status.HTTP_200_OK)
+            return Response(
+                {"status": f"초대가 {response}되었습니다."}, status=status.HTTP_200_OK
+            )
 
         except TeamInvitation.DoesNotExist:
             raise NotFound(detail="초대를 찾을 수 없습니다.")
