@@ -23,3 +23,13 @@ class Column(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Ticket(models.Model):
+    column = models.ForeignKey(Column, on_delete=models.CASCADE, related_name="tickets")
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    order = models.IntegerField()
+
+    def __str__(self):
+        return self.title
