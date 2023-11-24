@@ -1,8 +1,25 @@
 from rest_framework import views, status, permissions
 from rest_framework.response import Response
-from .models import Column, KanbanBoard
-from .serializers import ColumnSerializer
-from teams.models import Team
+from .models import Column, KanbanBoard, Ticket
+from .serializers import ColumnSerializer, TicketSerializer
+
+
+class IsTeamMember(permissions.BasePermission):
+    """
+    사용자가 지정된 팀의 멤버인지 확인하는 권한 클래스
+    """
+
+    def has_object_permission(self, request, view, obj):
+        # obj는 Column 또는 Ticket의 인스턴스일 수 있음
+        # 해당 객체의 칸반보드를 참조하여 팀을 확인
+        team = (
+            obj.kanban_board.team
+            if hasattr(obj, "kanban_board")
+            else obj.column.kanban_board.team
+        )
+        return team.team_invitations.filter(
+            invitee=request.user, status="accepted"
+        ).exists()
 
 
 # 칸반보드의 Column 생성 API
@@ -158,4 +175,119 @@ class ColumnOrderUpdateAPIView(views.APIView):
         except KanbanBoard.DoesNotExist:
             return Response(
                 {"error": "칸반보드가 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+# 칸반보드의 Ticket 생성 API
+class TicketCreateAPIView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated, IsTeamMember]
+
+    def post(self, request, column_id):
+        try:
+            column = Column.objects.get(pk=column_id)
+            serializer = TicketSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(column=column)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Column.DoesNotExist:
+            return Response(
+                {"error": "Column이 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+# 칸반보드의 Ticket 수정 API
+class TicketUpdateAPIView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated, IsTeamMember]
+
+    def put(self, request, ticket_id):
+        try:
+            ticket = Ticket.objects.get(pk=ticket_id)
+            if not IsTeamMember(request.user, ticket.column.kanban_board.team):
+                return Response(
+                    {"error": "팀 멤버가 아닙니다."}, status=status.HTTP_403_FORBIDDEN
+                )
+
+            serializer = TicketSerializer(ticket, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Ticket.DoesNotExist:
+            return Response(
+                {"error": "해당 ID의 Ticket이 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+# 칸반보드의 Ticket 삭제 API
+class TicketDeleteAPIView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated, IsTeamMember]
+
+    def delete(self, request, ticket_id):
+        try:
+            ticket = Ticket.objects.get(pk=ticket_id)
+            if not IsTeamMember(request.user, ticket.column.kanban_board.team):
+                return Response(
+                    {"error": "팀 멤버가 아닙니다."}, status=status.HTTP_403_FORBIDDEN
+                )
+
+            ticket.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Ticket.DoesNotExist:
+            return Response(
+                {"error": "해당 ID의 Ticket이 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class TicketOrderUpdateAPIView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def put(self, request, column_id):
+        try:
+            column = Column.objects.get(pk=column_id)
+            new_order = request.data.get("order")
+            if not isinstance(new_order, list):
+                return Response(
+                    {"error": "잘못된 데이터 형식입니다."}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            for index, ticket_id in enumerate(new_order):
+                Ticket.objects.filter(pk=ticket_id, column=column).update(order=index)
+
+            return Response(
+                {"message": "Ticket 순서가 업데이트 되었습니다."}, status=status.HTTP_200_OK
+            )
+        except Column.DoesNotExist:
+            return Response(
+                {"error": "Column이 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+# 칸반 Ticket Column 이동 API
+class TicketColumnMoveAPIView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated, IsTeamMember]
+
+    def put(self, request, ticket_id):
+        try:
+            ticket = Ticket.objects.get(pk=ticket_id)
+            new_column_id = request.data.get("new_column_id")
+
+            new_column = Column.objects.get(pk=new_column_id)
+            if not IsTeamMember(request.user, new_column.kanban_board.team):
+                return Response(
+                    {"error": "팀 멤버가 아닙니다."}, status=status.HTTP_403_FORBIDDEN
+                )
+
+            ticket.column = new_column
+            ticket.save()
+            return Response(
+                {"message": "Ticket이 새 Column으로 이동되었습니다."}, status=status.HTTP_200_OK
+            )
+        except Ticket.DoesNotExist:
+            return Response(
+                {"error": "해당 ID의 Ticket이 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Column.DoesNotExist:
+            return Response(
+                {"error": "해당 ID의 Column이 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND
             )
