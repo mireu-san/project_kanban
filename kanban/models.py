@@ -30,6 +30,9 @@ class Ticket(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     order = models.IntegerField()
+    work_time = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tag = models.CharField(max_length=100, blank=True, null=True)
+    deadline = models.DateField(null=True, blank=True)
 
     def __str__(self):
         return self.title
