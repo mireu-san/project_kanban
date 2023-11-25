@@ -3,7 +3,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from kanban.models import Ticket
 from django.db.models import Sum
-from datetime import datetime, timedelta
 
 
 class WorkAnalysisAPIView(APIView):
